@@ -39,6 +39,8 @@ bool run_lis_power(LIS_MATRIX A, const double shift, double &eigenvalue,
     lis_vector_destroy(x);
     return ok;
 }
+
+void create_checkerboard(MatrixXd& board);
 unsigned char* write_image(MatrixXd& image);
 void build_matrices(int k, MatrixXd& C, MatrixXd& D, JacobiSVD<MatrixXd>& svd);
 
@@ -160,8 +162,51 @@ int main(int argc, char **argv) {
 
     
 
+    //Task 8
+    MatrixXd checkerboard(400, 400);
+    create_checkerboard(checkerboard);
+
+    printf("The norm of the board matrix is: %f\n", checkerboard.norm());
+
+    //Task 9
+    MatrixXd noisy_checkerboard = checkerboard;
+    
+    for(int i = 0; i < noisy_checkerboard.rows(); i++) {
+        for(int j = 0; j < noisy_checkerboard.cols(); j++) {
+            double noise = ((double)rand() / RAND_MAX) * 120 - 60;
+            noisy_checkerboard(i, j) += noise;
+            if(noisy_checkerboard(i, j) < 0) noisy_checkerboard(i, j) = 0; 
+            if(noisy_checkerboard(i, j) > 255) noisy_checkerboard(i, j) = 255;
+        }
+    }
+
+    data = write_image(noisy_checkerboard);
+
+    if(stbi_write_png("noisy_checkerboard.png", noisy_checkerboard.cols(), noisy_checkerboard.rows(), 1, data, noisy_checkerboard.cols()) == 0) {
+        printf("Error writing image");
+        delete[] data;
+        return 1;
+    }else {
+        printf("Noisy chckerboard saved successfully as noisy_checkerboard.png\n");
+    }
+    delete[] data;
+
+
+
     return 0;
 }
+
+
+void create_checkerboard(MatrixXd& board){
+    int square = 40;
+
+    for(int i = 0; i < board.rows(); i++){
+        for(int j = 0; j < board.cols(); j++){
+            board(i, j) = (((i / square) + (j / square)) % 2 == 0) ? 0 : 255;
+        }
+    }
+}
+
 unsigned char* write_image(MatrixXd& image){
     auto height = image.rows();
     auto width = image.cols();
