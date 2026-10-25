@@ -215,8 +215,8 @@ unsigned char* write_image(MatrixXd& image){
 
     for(int i = 0; i < height; i++){
         for(int j = 0; j < width; j++){
-            if (image(i, j) > 255) image.coeffRef(i, j) = 255;
-            if (image(i, j) < 0) image.coeffRef(i, j) = 0;
+            if (image(i, j) > 255) image(i, j) = 255;
+            if (image(i, j) < 0) image(i, j) = 0;
 
             data[i * width + j] = static_cast<unsigned char>(image(i, j));
         }
