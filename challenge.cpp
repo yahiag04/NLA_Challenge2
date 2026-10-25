@@ -1,5 +1,7 @@
 #define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb/stb_image.h"
+#include "stb/stb_image_write.h"
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
 #include <Eigen/SVD>
@@ -37,6 +39,11 @@ bool run_lis_power(LIS_MATRIX A, const double shift, double &eigenvalue,
     lis_vector_destroy(x);
     return ok;
 }
+unsigned char* write_image(MatrixXd& image);
+void build_matrices(int k, MatrixXd& C, MatrixXd& D, JacobiSVD<MatrixXd>& svd);
+
+
+
 
 int main(int argc, char **argv) {
     // Task 1: load the grayscale image as an Eigen matrix A.
@@ -119,15 +126,67 @@ int main(int argc, char **argv) {
     printf("Euclidean norm of Sigma: %.12f\n", svd.singularValues().norm());
 
     // Task 6: form C and D for k = 30 and k = 90, then report nonzero counts.
-    for (const int k : {30, 90}) {
-        if (k > svd.singularValues().size()) {
-            fprintf(stderr, "k=%d exceeds the number of singular values\n", k);
-            return 1;
-        }
-        MatrixXd C = svd.matrixU().leftCols(k);
-        MatrixXd D = svd.matrixV().leftCols(k) * svd.singularValues().head(k).asDiagonal();
-        printf("k=%d: C non-zero entries = %ld, D non-zero entries = %ld\n",
-               k, (C.array() != 0.0).count(), (D.array() != 0.0).count());
+    MatrixXd C1, D1, C2, D2; 
+
+    build_matrices(30, C1, D1, svd);
+    build_matrices(90, C2, D2, svd);
+
+    //Task 7
+    MatrixXd image_1 = C1 * D1.transpose();
+    data = write_image(image_1);
+
+    if(stbi_write_png("compressed_image_1.png", image_1.cols(), image_1.rows(), 1, data, image_1.cols()) == 0) {
+        printf("Error writing image");
+        delete[] data;
+        return 1;
+    }else {
+        printf("Compressed image saved successfully as compressed_image_1.png\n");
     }
+    delete[] data;
+
+
+
+    MatrixXd image_2 = C2 * D2.transpose();
+    data = write_image(image_2);
+
+    if(stbi_write_png("compressed_image_2.png", image_2.cols(), image_2.rows(), 1, data, image_2.cols()) == 0) {
+        printf("Error writing image");
+        delete[] data;
+        return 1;
+    }else {
+        printf("Compressed image saved successfully as compressed_image_2.png\n");
+    }
+    delete[] data;
+
+    
+
     return 0;
+}
+unsigned char* write_image(MatrixXd& image){
+    auto height = image.rows();
+    auto width = image.cols();
+
+    unsigned char* data = new unsigned char[height * width];
+
+    for(int i = 0; i < height; i++){
+        for(int j = 0; j < width; j++){
+            if (image(i, j) > 255) image.coeffRef(i, j) = 255;
+            if (image(i, j) < 0) image.coeffRef(i, j) = 0;
+
+            data[i * width + j] = static_cast<unsigned char>(image(i, j));
+        }
+    }
+
+    return data;
+}
+
+void build_matrices(int k, MatrixXd& C, MatrixXd& D, JacobiSVD<MatrixXd>& svd){
+
+    if (k > svd.singularValues().size()) {
+        fprintf(stderr, "k=%d exceeds the number of singular values\n", k);
+    }
+    C = svd.matrixU().leftCols(k);
+    D = svd.matrixV().leftCols(k) * svd.singularValues().head(k).asDiagonal();
+    printf("k=%d: C non-zero entries = %ld, D non-zero entries = %ld\n",
+            k, (C.array() != 0.0).count(), (D.array() != 0.0).count());
 }
