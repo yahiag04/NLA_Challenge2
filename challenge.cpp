@@ -41,8 +41,8 @@ bool run_lis_power(LIS_MATRIX A, const double shift, double &eigenvalue,
 }
 
 void create_checkerboard(MatrixXd& board);
-unsigned char* write_image(MatrixXd& image);
-void build_matrices(int k, MatrixXd& C, MatrixXd& D, JacobiSVD<MatrixXd>& svd);
+unsigned char* write_image(const MatrixXd& image);
+bool build_matrices(int k, MatrixXd& C, MatrixXd& D, JacobiSVD<MatrixXd>& svd);
 
 
 
@@ -130,8 +130,8 @@ int main(int argc, char **argv) {
     // Task 6: form C and D for k = 30 and k = 90, then report nonzero counts.
     MatrixXd C1, D1, C2, D2; 
 
-    build_matrices(30, C1, D1, svd);
-    build_matrices(90, C2, D2, svd);
+    if (!build_matrices(30, C1, D1, svd) ||
+        !build_matrices(90, C2, D2, svd)) return 1;
 
     //Task 7
     MatrixXd image_1 = C1 * D1.transpose();
@@ -168,6 +168,14 @@ int main(int argc, char **argv) {
 
     printf("The norm of the board matrix is: %f\n", checkerboard.norm());
 
+    data = write_image(checkerboard);
+    const int boardSaved = stbi_write_png("checkerboard.png", 400, 400, 1, data, 400);
+    delete[] data;
+    if (!boardSaved) {
+        fprintf(stderr, "Error writing checkerboard.png\n");
+        return 1;
+    }
+
     //Task 9
     MatrixXd noisy_checkerboard = checkerboard;
     
@@ -193,6 +201,41 @@ int main(int argc, char **argv) {
 
 
 
+    // Task 10: SVD of the noisy image, after clipping pixels to [0, 255].
+    JacobiSVD<MatrixXd> noisySvd(noisy_checkerboard, ComputeThinU | ComputeThinV);
+    if (noisySvd.info() != Success) {
+        fprintf(stderr, "Error computing the SVD of the noisy checkerboard\n");
+        return 1;
+    }
+    printf("Noisy checkerboard largest singular values: %.12f, %.12f\n",
+           noisySvd.singularValues()(0), noisySvd.singularValues()(1));
+
+    // Task 13: compare floating-point reconstructions before PNG quantization.
+    printf("Noisy checkerboard RMSE versus original: %.12f\n",
+           (noisy_checkerboard - checkerboard).norm() / std::sqrt(checkerboard.size()));
+    for (const int k : {6, 12}) {
+        // Task 11: both factors have size 400 x k.
+        MatrixXd C, D;
+        if (!build_matrices(k, C, D, noisySvd)) return 1;
+        printf("Checkerboard k=%d: C size = %ld x %ld, D size = %ld x %ld\n",
+               k, C.rows(), C.cols(), D.rows(), D.cols());
+
+        // Task 12: reconstruct and export each rank-k approximation.
+        const MatrixXd compressed = C * D.transpose();
+        const std::string filename = "compressed_checkerboard_k" + std::to_string(k) + ".png";
+        data = write_image(compressed);
+        const int saved = stbi_write_png(filename.c_str(), compressed.cols(),
+                                        compressed.rows(), 1, data, compressed.cols());
+        delete[] data;
+        if (!saved) {
+            fprintf(stderr, "Error writing %s\n", filename.c_str());
+            return 1;
+        }
+        printf("Checkerboard k=%d: RMSE versus original = %.12f, versus noisy = %.12f\n",
+               k, (compressed - checkerboard).norm() / std::sqrt(checkerboard.size()),
+               (compressed - noisy_checkerboard).norm() / std::sqrt(checkerboard.size()));
+        printf("Compressed checkerboard saved as %s\n", filename.c_str());
+    }
     return 0;
 }
 
@@ -207,7 +250,7 @@ void create_checkerboard(MatrixXd& board){
     }
 }
 
-unsigned char* write_image(MatrixXd& image){
+unsigned char* write_image(const MatrixXd& image){
     auto height = image.rows();
     auto width = image.cols();
 
@@ -215,23 +258,22 @@ unsigned char* write_image(MatrixXd& image){
 
     for(int i = 0; i < height; i++){
         for(int j = 0; j < width; j++){
-            if (image(i, j) > 255) image(i, j) = 255;
-            if (image(i, j) < 0) image(i, j) = 0;
-
-            data[i * width + j] = static_cast<unsigned char>(image(i, j));
+            data[i * width + j] = static_cast<unsigned char>(std::clamp(image(i, j), 0.0, 255.0));
         }
     }
 
     return data;
 }
 
-void build_matrices(int k, MatrixXd& C, MatrixXd& D, JacobiSVD<MatrixXd>& svd){
+bool build_matrices(int k, MatrixXd& C, MatrixXd& D, JacobiSVD<MatrixXd>& svd){
 
-    if (k > svd.singularValues().size()) {
-        fprintf(stderr, "k=%d exceeds the number of singular values\n", k);
+    if (k < 1 || k > svd.singularValues().size()) {
+        fprintf(stderr, "Invalid k=%d: expected 1 <= k <= %ld\n", k, svd.singularValues().size());
+        return false;
     }
     C = svd.matrixU().leftCols(k);
     D = svd.matrixV().leftCols(k) * svd.singularValues().head(k).asDiagonal();
     printf("k=%d: C non-zero entries = %ld, D non-zero entries = %ld\n",
             k, (C.array() != 0.0).count(), (D.array() != 0.0).count());
+    return true;
 }
