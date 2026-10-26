@@ -14,6 +14,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <vector>
 
 using namespace Eigen;
 
@@ -210,9 +211,7 @@ int main(int argc, char **argv) {
     printf("Noisy checkerboard largest singular values: %.12f, %.12f\n",
            noisySvd.singularValues()(0), noisySvd.singularValues()(1));
 
-    // Task 13: compare floating-point reconstructions before PNG quantization.
-    printf("Noisy checkerboard RMSE versus original: %.12f\n",
-           (noisy_checkerboard - checkerboard).norm() / std::sqrt(checkerboard.size()));
+    std::vector<MatrixXd> reconstructions;
     for (const int k : {6, 12}) {
         // Task 11: both factors have size 400 x k.
         MatrixXd C, D;
@@ -231,10 +230,19 @@ int main(int argc, char **argv) {
             fprintf(stderr, "Error writing %s\n", filename.c_str());
             return 1;
         }
+        reconstructions.push_back(compressed);
+        printf("Compressed checkerboard saved as %s\n", filename.c_str());
+    }
+
+    // Task 13: compare floating-point reconstructions before PNG quantization.
+    printf("Noisy checkerboard RMSE versus original: %.12f\n",
+           (noisy_checkerboard - checkerboard).norm() / std::sqrt(checkerboard.size()));
+    std::size_t i = 0;
+    for (const int k : {6, 12}) {
+        const MatrixXd& compressed = reconstructions[i++];
         printf("Checkerboard k=%d: RMSE versus original = %.12f, versus noisy = %.12f\n",
                k, (compressed - checkerboard).norm() / std::sqrt(checkerboard.size()),
                (compressed - noisy_checkerboard).norm() / std::sqrt(checkerboard.size()));
-        printf("Compressed checkerboard saved as %s\n", filename.c_str());
     }
     return 0;
 }
