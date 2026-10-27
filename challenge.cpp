@@ -179,13 +179,11 @@ int main(int argc, char **argv) {
 
     //Task 9
     MatrixXd noisy_checkerboard = checkerboard;
-    
+
     for(int i = 0; i < noisy_checkerboard.rows(); i++) {
         for(int j = 0; j < noisy_checkerboard.cols(); j++) {
             double noise = ((double)rand() / RAND_MAX) * 120 - 60;
             noisy_checkerboard(i, j) += noise;
-            if(noisy_checkerboard(i, j) < 0) noisy_checkerboard(i, j) = 0; 
-            if(noisy_checkerboard(i, j) > 255) noisy_checkerboard(i, j) = 255;
         }
     }
 
@@ -202,7 +200,7 @@ int main(int argc, char **argv) {
 
 
 
-    // Task 10: SVD of the noisy image, after clipping pixels to [0, 255].
+    // Task 10: SVD of the noisy image
     JacobiSVD<MatrixXd> noisySvd(noisy_checkerboard, ComputeThinU | ComputeThinV);
     if (noisySvd.info() != Success) {
         fprintf(stderr, "Error computing the SVD of the noisy checkerboard\n");

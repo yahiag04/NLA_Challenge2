@@ -22,8 +22,8 @@ Place `deer.jpg` in the project directory. Run `challenge` from that directory. 
 6. Form `C = U_k` and `D = V_k Sigma_k` for `k = 30` and `k = 90`, and report their nonzero entry counts.
 7. Reconstruct the deer image with `k = 30, 90` and export `compressed_image_1.png` and `compressed_image_2.png`.
 8. Create a 400 × 400 checkerboard with 40 × 40 squares, report its Frobenius norm, and save `checkerboard.png`.
-9. Add random noise in `[-60, 60]`, clip the noisy pixels to `[0, 255]`, and save `noisy_checkerboard.png`.
-10. Compute the thin SVD of the clipped floating-point noisy matrix and report its two largest singular values.
+9. Add random noise in `[-60, 60]` and save `noisy_checkerboard.png`
+10. Compute the thin SVD of the unclipped floating-point noisy matrix and report its two largest singular values.
 11. Form C and D for `k = 6, 12` and report their dimensions: both are 400 × 6 or 400 × 12, respectively.
 12. Export `compressed_checkerboard_k6.png` and `compressed_checkerboard_k12.png`.
 13. Compare the reconstructions with the original and noisy checkerboards using RMSE and the discussion below.
@@ -75,14 +75,14 @@ The program does not seed `rand()`, so runs are repeatable with the same C runti
 Measured in the course container (`quay.io/pjbaioni/amsc_mk:2025`):
 
 - Original checkerboard Frobenius norm: **72124.891681**.
-- Largest noisy-image singular values: **51012.027685599613** and **45010.442702636152**.
+- Largest noisy-image singular values: **51011.909045898668** and **51002.421720600963**.
 - At `k = 6`, C and D are both **400 × 6**; at `k = 12`, both are **400 × 12**.
 
 | Image / reconstruction | RMSE versus original | RMSE versus noisy matrix |
 | --- | ---: | ---: |
-| Noisy checkerboard | 24.459253292664 | 0 |
-| Rank 6 | 15.565789637580 | 18.866975307764 |
-| Rank 12 | 16.187107230792 | 18.336692794053 |
+| Noisy checkerboard | 34.586243358632 | 0 |
+| Rank 6 | 7.513007859763 | 33.760514094702 |
+| Rank 12 | 10.934733714287 | 32.812322131300 |
 
 Both reconstructions visibly suppress the speckled noise and retain the square boundaries. The rank-6 image is smoother and closer to the clean original. Rank 12 better approximates the noisy matrix, as expected from truncated SVD, but retains more noise and therefore has a slightly larger error against the clean original. The remaining loss of contrast (dark gray instead of pure black, light gray instead of pure white) is consistent with the clipping bias. Increasing the rank improves approximation of the input; it does not necessarily improve denoising.
 
